@@ -11,4 +11,5 @@ in
   upplay = pkgs.callPackage ./pkgs/upplay {
     inherit libupnpp;
   };
+  eezupnp = pkgs.callPackage ./pkgs/eezupnp { };
 }
