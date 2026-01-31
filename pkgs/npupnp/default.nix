@@ -51,7 +51,7 @@ stdenv.mkDerivation rec {
   meta = with lib; {
     description = "New Portable UPnP library (npupnp) used by libupnpp 1.x and upmpdcli";
     homepage = "https://www.lesbonscomptes.com/upmpdcli/";
-    license = licenses.lgpl21Plus;
+    sourceProvenance = with sourceTypes; [ fromSource ];
     platforms = platforms.linux;
   };
 }

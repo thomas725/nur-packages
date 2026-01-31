@@ -52,6 +52,7 @@ stdenv.mkDerivation rec {
     description = "C++ wrapper for npupnp (for upmpdcli and upplay)";
     homepage = "https://www.lesbonscomptes.com/upmpdcli/";
     license = licenses.lgpl21Plus;
+    sourceProvenance = with sourceTypes; [ fromSource ];
     platforms = platforms.linux;
   };
 }

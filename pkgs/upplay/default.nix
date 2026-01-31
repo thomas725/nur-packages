@@ -65,6 +65,7 @@ stdenv.mkDerivation rec {
     description = "Qt-based UPnP/OpenHome audio control point";
     homepage = "https://www.lesbonscomptes.com/upplay/";
     license = licenses.gpl2Plus;
+    sourceProvenance = with sourceTypes; [ fromSource ];
     platforms = platforms.linux;
     mainProgram = "upplay";
   };
