@@ -1,7 +1,7 @@
 {
   pkgs ? import <nixpkgs> { },
 }:
-{
+rec {
   npupnp = pkgs.callPackage ./pkgs/npupnp { };
   libupnpp = pkgs.callPackage ./pkgs/libupnpp { inherit npupnp; };
   upplay = pkgs.callPackage ./pkgs/upplay { inherit libupnpp; };
