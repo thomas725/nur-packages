@@ -1,6 +1,9 @@
 {
   pkgs ? import <nixpkgs> { },
 }:
+let
+  nurPkgs = import ./. { inherit pkgs; };
+in
 {
   cacheOutputs = [
     nurPkgs.beurer_bf100_parser
