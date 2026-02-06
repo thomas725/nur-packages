@@ -14,7 +14,7 @@ rustPlatform.buildRustPackage rec {
     owner = "thomas351";
     repo  = "beurer_bf100_parser";
     inherit rev;
-    hash = "sha256-G1XW8JJSXQwvVYFfQyyssXsA7UCj4yygH1L8cT1d6a8=";
+    hash = "sha256-WPwbEyNN1GwjUNZKb1njlQkZVNxzv+pu6UOwV0lUYgw=";
     domain = "gitlab.com";
   };
 
