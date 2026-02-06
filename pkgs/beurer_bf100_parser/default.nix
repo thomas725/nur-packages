@@ -4,7 +4,7 @@
 }:
 
 let
-  rev = "d950c097de207d16d3ea23b0be6e3f4c0a29534c";
+  rev = "d5b4eeba628730008b9e6f9f111eb26a4d767020";
 in
 rustPlatform.buildRustPackage rec {
   pname = "beurer_bf100_parser";
