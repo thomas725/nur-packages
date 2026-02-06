@@ -18,15 +18,6 @@ rustPlatform.buildRustPackage rec {
     domain = "gitlab.com";
   };
 
-  # If your project has a Cargo.lock, this is usually enough:
-  cargoLock = {
-    lockFile = src + "/Cargo.lock";
-  };
-
-  # If you need extra native build inputs (for example, OpenSSL):
-  # nativeBuildInputs = [ pkg-config ];
-  # buildInputs = [ openssl ];
-
   meta = with lib; {
     description = "Parser for Beurer BF100 scale data";
     homepage    = "https://gitlab.com/thomas351/beurer_bf100_parser";
