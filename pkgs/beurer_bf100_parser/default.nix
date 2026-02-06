@@ -17,6 +17,7 @@ rustPlatform.buildRustPackage rec {
     hash = "sha256-WPwbEyNN1GwjUNZKb1njlQkZVNxzv+pu6UOwV0lUYgw=";
     domain = "gitlab.com";
   };
+  cargoHash = "sha256-p9gtbBdWNCJ1EhFe62uK4WbDutGnHHN3OjVLIsq52rE=";
 
   meta = with lib; {
     description = "Parser for Beurer BF100 scale data";
