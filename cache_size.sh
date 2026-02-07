@@ -18,14 +18,29 @@ attrs=(
 CACHIX_URL="https://thomas725.cachix.org"
 CACHIX_KEY="thomas725.cachix.org-1:u/kJNXSESI2VZU+U9wt0bBXE9K/0dTmvEYi+pWKAXcc="
 
+# Filter function: strip the '--add-root' warning from stderr
+filter_add_root() {
+  sed '/^warning: you did not specify.*--add-root/d'
+}
+
+# Wrapped nix-instantiate: filter stderr
+ni() {
+  nix-instantiate "$@" 2> >(filter_add_root >&2)
+}
+
+# Wrapped nix-store: filter stderr
+ns() {
+  nix-store "$@" 2> >(filter_add_root >&2)
+}
+
 for attr in "${attrs[@]}"; do
   echo "=== $attr ==="
 
-  # Instantiate derivation
-  drv=$(nix-instantiate default.nix -A "$attr")
+  # Instantiate derivation (with warning stripped)
+  drv=$(ni default.nix -A "$attr")
 
-  # Expected output paths (without building)
-  out_paths=$(nix-store --query --outputs "$drv")
+  # Expected output paths (without building), also with warning stripped
+  out_paths=$(ns --query --outputs "$drv")
 
   cached_any=false
 
@@ -36,12 +51,11 @@ for attr in "${attrs[@]}"; do
     else
       echo "  trying to fetch from $CACHIX_URL only: $out"
 
-      # Try to realise from your Cachix cache only, with builders disabled.
-      # Strip the '--add-root' warning but keep other output (like copying path...).
+      # Try to realise from your cache only, builders disabled.
       NIX_CONFIG="substituters = $CACHIX_URL
 trusted-public-keys = $CACHIX_KEY
 builders = " \
-      nix-store --realise "$out" 2> >(sed '/^warning: you did not specify.*--add-root/d' >&2) || true
+        ns --realise "$out" || true
 
       if [ -d "$out" ]; then
         cached_any=true
@@ -64,7 +78,7 @@ builders = " \
       continue
     fi
 
-    info=$(nix path-info -S "$out" 2>/dev/null | grep '^/nix/store/' || true)
+    info=$(nix path-info -S "$out" | grep '^/nix/store/' || true)
     if [ -z "$info" ]; then
       echo "  (could not get size for $out)"
       continue
