@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-export NIXPKGS_ALLOW_UNFREE=1
 set -euo pipefail
+
+# Allow unfree packages during this script
+export NIXPKGS_ALLOW_UNFREE=1
 
 attrs=(
   npupnp
@@ -13,43 +15,55 @@ attrs=(
   beurer_bf100_parser
 )
 
-# URL of your cache
 CACHIX_URL="https://thomas725.cachix.org"
+CACHIX_KEY="thomas725.cachix.org-1:u/kJNXSESI2VZU+U9wt0bBXE9K/0dTmvEYi+pWKAXcc="
 
 for attr in "${attrs[@]}"; do
   echo "=== $attr ==="
 
-  # Instantiate derivation (errors visible)
+  # Instantiate derivation
   drv=$(nix-instantiate default.nix -A "$attr")
 
-  # Derive the expected output path(s) without realising
-  # This gives us the store path(s) without building.
+  # Expected output paths (without building)
   out_paths=$(nix-store --query --outputs "$drv")
 
-  # For each output path, check if it is already present locally;
-  # if not, try to fetch it *only* from Cachix, no building.
+  cached_any=false
+
   for out in $out_paths; do
     if [ -d "$out" ]; then
+      cached_any=true
       echo "  already present locally: $out"
     else
-      echo "  trying to fetch from cache: $out"
+      echo "  trying to fetch from $CACHIX_URL only: $out"
 
-      # Use a restricted Nix config via env vars so it:
-      # - prefers only your cache and the main nixos cache
-      # - does not have a writable store to build into
-      # This is a heuristic: if it can't get it from Cachix, we treat it as "not cached".
-      NIX_CONFIG="substituters = https://cache.nixos.org/ $CACHIX_URL
-trusted-public-keys = cache.nixos.org-1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa= thomas725.cachix.org-1:u/kJNXSESI2VZU+U9wt0bBXE9K/0dTmvEYi+pWKAXcc=
-builders = " nix-store -r "$out" 2>&1 | sed 's/^warning: you did not specify.*//'
+      # Try to realise from your Cachix cache only, with builders disabled.
+      # Strip the '--add-root' warning but keep other output (like copying path...).
+      NIX_CONFIG="substituters = $CACHIX_URL
+trusted-public-keys = $CACHIX_KEY
+builders = " \
+      nix-store --realise "$out" 2> >(sed '/^warning: you did not specify.*--add-root/d' >&2) || true
 
-      if [ ! -d "$out" ]; then
-        echo "  ERROR: $attr output $out is not available from cache (and we refused to build)."
-        echo "  -> This likely means CI never pushed this one, or it's a different nixpkgs/NUR revision."
-        exit 1
+      if [ -d "$out" ]; then
+        cached_any=true
+        echo "  fetched from cache: $out"
+      else
+        echo "  NOT CACHED: $out"
       fi
     fi
+  done
 
-    # Now we know $out exists locally (either from before or fetched from cache).
+  if [ "$cached_any" = false ]; then
+    echo "  -> no outputs present or cached for $attr, skipping size"
+    echo
+    continue
+  fi
+
+  # Size reporting for outputs that exist
+  for out in $out_paths; do
+    if [ ! -d "$out" ]; then
+      continue
+    fi
+
     info=$(nix path-info -S "$out" 2>/dev/null | grep '^/nix/store/' || true)
     if [ -z "$info" ]; then
       echo "  (could not get size for $out)"
