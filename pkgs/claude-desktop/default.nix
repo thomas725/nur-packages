@@ -1,44 +1,56 @@
 { lib
 , stdenv
 , fetchurl
+, appimageTools
+, electron
+, makeWrapper
 , wrapGAppsHook3
 }:
 
 let
   version = "1.3.0-beta.1";
   releaseTag = "v.1.3.0-Beta.01";
+  appImage = fetchurl {
+    url = "https://github.com/simongettkandt/claude-ai-desktop-app/releases/download/${releaseTag}/Claude-Desktop-${version}.AppImage";
+    hash = "sha256-EauLt8SSPCwuZPmNlz7XknCMjlZ3CLGNwJc+vG05lHU=";
+  };
+  appimageContents = appimageTools.extractType2 {
+    pname = "claude-desktop";
+    inherit version;
+    src = appImage;
+  };
 in
 stdenv.mkDerivation {
   pname = "claude-desktop";
   inherit version;
 
-  src = fetchurl {
-    url = "https://github.com/simongettkandt/claude-ai-desktop-app/releases/download/${releaseTag}/Claude-Desktop-${version}.AppImage";
-    hash = "sha256-EauLt8SSPCwuZPmNlz7XknCMjlZ3CLGNwJc+vG05lHU=";
-  };
+  src = appImage;
+  dontUnpack = true;
+  dontBuild = true;
 
   nativeBuildInputs = [
+    makeWrapper
     wrapGAppsHook3
   ];
 
-  dontUnpack = true;
-  dontBuild = true;
+  buildInputs = [
+    electron
+  ];
 
   installPhase = ''
     runHook preInstall
 
     mkdir -p "$out/bin" "$out/share/applications"
 
-    # Install the AppImage
-    cp "$src" "$out/bin/claude-desktop.AppImage"
-    chmod +x "$out/bin/claude-desktop.AppImage"
+    # Extract and copy the app contents
+    cp -r ${appimageContents}/* "$out/" || true
 
-    # Create a launcher script using relative path
-    cat > "$out/bin/claude-desktop" <<'LAUNCHER'
-#!/bin/sh
-exec "$(dirname "$0")/claude-desktop.AppImage" "$@"
-LAUNCHER
-    chmod +x "$out/bin/claude-desktop"
+    # Find the main executable
+    if [ -f "$out/claude-desktop" ]; then
+      makeWrapper "$out/claude-desktop" "$out/bin/claude-desktop"
+    elif [ -f "$out/AppRun" ]; then
+      makeWrapper "$out/AppRun" "$out/bin/claude-desktop"
+    fi
 
     # Install desktop file
     cat > "$out/share/applications/claude-desktop.desktop" <<EOF
