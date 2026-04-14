@@ -2,9 +2,15 @@
 , stdenv
 , fetchurl
 , appimageTools
-, electron
+, autoPatchelfHook
 , makeWrapper
 , wrapGAppsHook3
+, glib
+, gtk3
+, libnotify
+, libxkbcommon
+, mesa
+, xorg
 }:
 
 let
@@ -29,12 +35,35 @@ stdenv.mkDerivation {
   dontBuild = true;
 
   nativeBuildInputs = [
+    autoPatchelfHook
     makeWrapper
     wrapGAppsHook3
   ];
 
   buildInputs = [
-    electron
+    glib
+    gtk3
+    libnotify
+    libxkbcommon
+    mesa
+    xorg.libX11
+    xorg.libxcb
+    xorg.libXi
+    xorg.libXrandr
+    xorg.libXinerama
+    xorg.libXcursor
+  ];
+
+  autoPatchelfIgnoreMissingDeps = [
+    "libnspr4.so"
+    "libnss3.so"
+    "libnssutil3.so"
+    "libsmime3.so"
+    "libasound.so.2"
+    "libdbusmenu-gtk.so.4"
+    "libdbusmenu-glib.so.4"
+    "libgtk-x11-2.0.so.0"
+    "libdbus-glib-1.so.2"
   ];
 
   installPhase = ''
@@ -45,9 +74,13 @@ stdenv.mkDerivation {
     # Extract and copy the app contents
     cp -r ${appimageContents}/* "$out/" || true
 
-    # Find the main executable
+    # Remove extracted bin/claude-desktop if it exists to avoid conflicts
+    rm -f "$out/bin/claude-desktop" "$out/bin/.claude-desktop-wrapped" 2>/dev/null || true
+
+    # Create wrapper for the main executable
     if [ -f "$out/claude-desktop" ]; then
-      makeWrapper "$out/claude-desktop" "$out/bin/claude-desktop"
+      mv "$out/claude-desktop" "$out/bin/claude-desktop.real"
+      makeWrapper "$out/bin/claude-desktop.real" "$out/bin/claude-desktop"
     elif [ -f "$out/AppRun" ]; then
       makeWrapper "$out/AppRun" "$out/bin/claude-desktop"
     fi
