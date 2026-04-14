@@ -10,6 +10,10 @@
 , libnotify
 , libxkbcommon
 , mesa
+, nss
+, nspr
+, alsa-lib
+, dbus
 , xorg
 }:
 
@@ -46,6 +50,10 @@ stdenv.mkDerivation {
     libnotify
     libxkbcommon
     mesa
+    nss
+    nspr
+    alsa-lib
+    dbus
     xorg.libX11
     xorg.libxcb
     xorg.libXi
@@ -55,11 +63,6 @@ stdenv.mkDerivation {
   ];
 
   autoPatchelfIgnoreMissingDeps = [
-    "libnspr4.so"
-    "libnss3.so"
-    "libnssutil3.so"
-    "libsmime3.so"
-    "libasound.so.2"
     "libdbusmenu-gtk.so.4"
     "libdbusmenu-glib.so.4"
     "libgtk-x11-2.0.so.0"
