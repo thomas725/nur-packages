@@ -33,10 +33,10 @@ stdenv.mkDerivation {
     cp "$src" "$out/bin/claude-desktop.AppImage"
     chmod +x "$out/bin/claude-desktop.AppImage"
 
-    # Create a launcher script
+    # Create a launcher script using relative path
     cat > "$out/bin/claude-desktop" <<'LAUNCHER'
 #!/bin/sh
-exec "$out/bin/claude-desktop.AppImage" "$@"
+exec "$(dirname "$0")/claude-desktop.AppImage" "$@"
 LAUNCHER
     chmod +x "$out/bin/claude-desktop"
 
