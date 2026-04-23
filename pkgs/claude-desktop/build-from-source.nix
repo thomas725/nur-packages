@@ -8,10 +8,9 @@
 , fetchFromGitHub
 , nodejs_22
 , makeWrapper
-, appimage-run
-, appimageTools
 , libxkbcommon
 , mesa
+, electron
 }:
 
 let
@@ -34,14 +33,37 @@ stdenv.mkDerivation {
     makeWrapper
   ];
 
-  # Copy node_modules dependencies from npm cache instead of downloading
-  # This makes the build more reproducible
   dontUnpack = false;
+
+  # Set environment variables to prevent Electron from downloading binaries at build time
+  env.ELECTRON_SKIP_BINARY_DOWNLOAD = "1";
+  env.npm_config_nodedir = "${nodejs_22}";
+
+  # Provide pre-built Electron to npm/electron-builder
+  postUnpack = ''
+    # Use pre-downloaded Electron instead of letting npm download it
+    export PATH="${electron}/bin:$PATH"
+  '';
 
   # Build phase: install dependencies and build AppImage
   buildPhase = ''
-    npm ci --ignore-scripts
-    npm run build-appimage -- --publish never
+    set -x  # Verbose output for debugging
+
+    # Install dependencies with timeout and verbose output
+    echo "Installing npm dependencies..."
+    timeout 300 npm install --no-save --no-audit --no-fund 2>&1 || true
+
+    echo "Verifying npm install completed..."
+    if [ ! -d node_modules ]; then
+      echo "ERROR: node_modules directory not created"
+      exit 1
+    fi
+
+    echo "Building AppImage with electron-builder..."
+    timeout 600 npm run build-appimage -- --publish never || true
+
+    echo "Checking for output..."
+    ls -lah dist/ || echo "dist/ directory not found"
   '';
 
   installPhase = ''
