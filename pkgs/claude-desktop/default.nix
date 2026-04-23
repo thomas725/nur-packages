@@ -74,7 +74,7 @@ stdenv.mkDerivation {
   installPhase = ''
     runHook preInstall
 
-    mkdir -p "$out/bin" "$out/share/applications"
+    mkdir -p "$out/bin" "$out/share/applications" "$out/lib"
 
     # Extract and copy the app contents
     cp -r ${appimageContents}/* "$out/" || true
@@ -82,37 +82,37 @@ stdenv.mkDerivation {
     # Remove extracted bin/claude-desktop if it exists to avoid conflicts
     rm -f "$out/bin/claude-desktop" "$out/bin/.claude-desktop-wrapped" 2>/dev/null || true
 
+    # Copy Mesa libraries and create symlinks for what Electron expects
+    cp ${mesa}/lib/libEGL_mesa.so.0 "$out/lib/libEGL.so.1"
+    cp ${mesa}/lib/libGLESv2.so.2 "$out/lib/libGLESv2.so.2" 2>/dev/null || true
+    cp ${libxkbcommon}/lib/libxkbcommon.so.0 "$out/lib/" 2>/dev/null || true
+
     # Symlink icudtl.dat to bin directory so it's found
     if [ -f "$out/icudtl.dat" ]; then
       ln -s "$out/icudtl.dat" "$out/bin/icudtl.dat"
     fi
 
     # Create wrapper script that runs from the app root directory with audio support
-    # Use ANGLE software rendering (ANGLE_DEFAULT_PLATFORM=swiftshader) to avoid libEGL.so.1 issue
     if [ -f "$out/claude-desktop" ]; then
       mv "$out/claude-desktop" "$out/.claude-desktop.real"
       cat > "$out/bin/claude-desktop-runner" << 'WRAPPER'
 #!/bin/sh
 cd "$(dirname "$0")/.." || exit 1
-export LIBGL_ALWAYS_SOFTWARE=1
-export ANGLE_DEFAULT_PLATFORM=swiftshader
 exec ./.claude-desktop.real "$@"
 WRAPPER
       chmod +x "$out/bin/claude-desktop-runner"
       makeWrapper "$out/bin/claude-desktop-runner" "$out/bin/claude-desktop" \
-        --prefix LD_LIBRARY_PATH : "./lib:${pulseaudio}/lib" \
+        --prefix LD_LIBRARY_PATH : "./lib:./lib64:${pulseaudio}/lib" \
         --inherit-argv0
     elif [ -f "$out/AppRun" ]; then
       cat > "$out/bin/claude-desktop-runner" << 'WRAPPER'
 #!/bin/sh
 cd "$(dirname "$0")/.." || exit 1
-export LIBGL_ALWAYS_SOFTWARE=1
-export ANGLE_DEFAULT_PLATFORM=swiftshader
 exec ./AppRun "$@"
 WRAPPER
       chmod +x "$out/bin/claude-desktop-runner"
       makeWrapper "$out/bin/claude-desktop-runner" "$out/bin/claude-desktop" \
-        --prefix LD_LIBRARY_PATH : "./lib:${pulseaudio}/lib" \
+        --prefix LD_LIBRARY_PATH : "./lib:./lib64:${pulseaudio}/lib" \
         --inherit-argv0
     fi
 
