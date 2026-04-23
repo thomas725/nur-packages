@@ -5,6 +5,7 @@
 , autoPatchelfHook
 , makeWrapper
 , wrapGAppsHook3
+, patchelf
 , glib
 , gtk3
 , libnotify
@@ -74,7 +75,7 @@ stdenv.mkDerivation {
   installPhase = ''
     runHook preInstall
 
-    mkdir -p "$out/bin" "$out/share/applications" "$out/lib"
+    mkdir -p "$out/bin" "$out/share/applications" "$out/lib-inject"
 
     # Extract and copy the app contents
     cp -r ${appimageContents}/* "$out/" || true
@@ -82,37 +83,41 @@ stdenv.mkDerivation {
     # Remove extracted bin/claude-desktop if it exists to avoid conflicts
     rm -f "$out/bin/claude-desktop" "$out/bin/.claude-desktop-wrapped" 2>/dev/null || true
 
-    # Copy Mesa libraries and create symlinks for what Electron expects
-    cp ${mesa}/lib/libEGL_mesa.so.0 "$out/lib/libEGL.so.1"
-    cp ${mesa}/lib/libGLESv2.so.2 "$out/lib/libGLESv2.so.2" 2>/dev/null || true
-    cp ${libxkbcommon}/lib/libxkbcommon.so.0 "$out/lib/" 2>/dev/null || true
+    # Copy Mesa and other libraries needed, renamed for ELF compatibility
+    cp ${mesa}/lib/libEGL_mesa.so.0 "$out/lib-inject/libEGL.so.1"
+    cp ${mesa}/lib/libGLESv2.so.2 "$out/lib-inject/libGLESv2.so.2" 2>/dev/null || true
+    cp ${mesa}/lib/libgbm.so.1 "$out/lib-inject/libgbm.so.1" 2>/dev/null || true
+    cp ${libxkbcommon}/lib/libxkbcommon.so.0 "$out/lib-inject/" 2>/dev/null || true
 
     # Symlink icudtl.dat to bin directory so it's found
     if [ -f "$out/icudtl.dat" ]; then
       ln -s "$out/icudtl.dat" "$out/bin/icudtl.dat"
     fi
 
-    # Create wrapper script that runs from the app root directory with audio support
+    # Create wrapper script that sets up LD_LIBRARY_PATH to inject our libraries first
     if [ -f "$out/claude-desktop" ]; then
       mv "$out/claude-desktop" "$out/.claude-desktop.real"
       cat > "$out/bin/claude-desktop-runner" << 'WRAPPER'
 #!/bin/sh
 cd "$(dirname "$0")/.." || exit 1
+# Put our injected libraries first in the path so old EGL symbols are found
+export LD_LIBRARY_PATH="$PWD/lib-inject:$PWD/lib:$LD_LIBRARY_PATH"
 exec ./.claude-desktop.real "$@"
 WRAPPER
       chmod +x "$out/bin/claude-desktop-runner"
       makeWrapper "$out/bin/claude-desktop-runner" "$out/bin/claude-desktop" \
-        --prefix LD_LIBRARY_PATH : "./lib:./lib64:${pulseaudio}/lib" \
+        --prefix LD_LIBRARY_PATH : "${pulseaudio}/lib" \
         --inherit-argv0
     elif [ -f "$out/AppRun" ]; then
       cat > "$out/bin/claude-desktop-runner" << 'WRAPPER'
 #!/bin/sh
 cd "$(dirname "$0")/.." || exit 1
+export LD_LIBRARY_PATH="$PWD/lib-inject:$PWD/lib:$LD_LIBRARY_PATH"
 exec ./AppRun "$@"
 WRAPPER
       chmod +x "$out/bin/claude-desktop-runner"
       makeWrapper "$out/bin/claude-desktop-runner" "$out/bin/claude-desktop" \
-        --prefix LD_LIBRARY_PATH : "./lib:./lib64:${pulseaudio}/lib" \
+        --prefix LD_LIBRARY_PATH : "${pulseaudio}/lib" \
         --inherit-argv0
     fi
 
