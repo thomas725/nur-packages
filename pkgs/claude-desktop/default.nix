@@ -19,11 +19,11 @@
 }:
 
 let
-  version = "1.3.0-beta.1";
-  releaseTag = "v.1.3.0-Beta.01";
+  version = "1.3.0";
+  releaseTag = "v.1.3.0";
   appImage = fetchurl {
     url = "https://github.com/simongettkandt/claude-ai-desktop-app/releases/download/${releaseTag}/Claude-Desktop-${version}.AppImage";
-    hash = "sha256-EauLt8SSPCwuZPmNlz7XknCMjlZ3CLGNwJc+vG05lHU=";
+    hash = "sha256-24XyCEGZ9Y6Gji8h3IJ9OahWWH9NyuURK3ByN3uk7p8=";
   };
   appimageContents = appimageTools.extractType2 {
     pname = "claude-desktop";
