@@ -88,13 +88,15 @@ stdenv.mkDerivation {
     fi
 
     # Create wrapper script that runs from the app root directory with audio support
-    # Disable GPU acceleration (--disable-gpu) to work around old Electron requiring libEGL.so.1
+    # Use ANGLE software rendering (ANGLE_DEFAULT_PLATFORM=swiftshader) to avoid libEGL.so.1 issue
     if [ -f "$out/claude-desktop" ]; then
       mv "$out/claude-desktop" "$out/.claude-desktop.real"
       cat > "$out/bin/claude-desktop-runner" << 'WRAPPER'
 #!/bin/sh
 cd "$(dirname "$0")/.." || exit 1
-exec ./.claude-desktop.real --disable-gpu "$@"
+export LIBGL_ALWAYS_SOFTWARE=1
+export ANGLE_DEFAULT_PLATFORM=swiftshader
+exec ./.claude-desktop.real "$@"
 WRAPPER
       chmod +x "$out/bin/claude-desktop-runner"
       makeWrapper "$out/bin/claude-desktop-runner" "$out/bin/claude-desktop" \
@@ -104,7 +106,9 @@ WRAPPER
       cat > "$out/bin/claude-desktop-runner" << 'WRAPPER'
 #!/bin/sh
 cd "$(dirname "$0")/.." || exit 1
-exec ./AppRun --disable-gpu "$@"
+export LIBGL_ALWAYS_SOFTWARE=1
+export ANGLE_DEFAULT_PLATFORM=swiftshader
+exec ./AppRun "$@"
 WRAPPER
       chmod +x "$out/bin/claude-desktop-runner"
       makeWrapper "$out/bin/claude-desktop-runner" "$out/bin/claude-desktop" \
