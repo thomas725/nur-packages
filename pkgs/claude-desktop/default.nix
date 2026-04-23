@@ -74,7 +74,7 @@ stdenv.mkDerivation {
   installPhase = ''
     runHook preInstall
 
-    mkdir -p "$out/bin" "$out/share/applications"
+    mkdir -p "$out/bin" "$out/share/applications" "$out/lib-symlinks"
 
     # Extract and copy the app contents
     cp -r ${appimageContents}/* "$out/" || true
@@ -82,12 +82,16 @@ stdenv.mkDerivation {
     # Remove extracted bin/claude-desktop if it exists to avoid conflicts
     rm -f "$out/bin/claude-desktop" "$out/bin/.claude-desktop-wrapped" 2>/dev/null || true
 
+    # Create symlinks with versioned names that Electron expects for OpenGL support
+    ln -s ${mesa}/lib/libEGL.so.1 "$out/lib-symlinks/libEGL.so.1" 2>/dev/null || true
+    ln -s ${mesa}/lib/libGLESv2.so.2 "$out/lib-symlinks/libGLESv2.so.2" 2>/dev/null || true
+
     # Symlink icudtl.dat to bin directory so it's found
     if [ -f "$out/icudtl.dat" ]; then
       ln -s "$out/icudtl.dat" "$out/bin/icudtl.dat"
     fi
 
-    # Create wrapper script that runs from the app root directory with audio support
+    # Create wrapper script that runs from the app root directory with audio and OpenGL support
     if [ -f "$out/claude-desktop" ]; then
       mv "$out/claude-desktop" "$out/.claude-desktop.real"
       cat > "$out/bin/claude-desktop-runner" << 'WRAPPER'
@@ -97,7 +101,7 @@ exec ./.claude-desktop.real "$@"
 WRAPPER
       chmod +x "$out/bin/claude-desktop-runner"
       makeWrapper "$out/bin/claude-desktop-runner" "$out/bin/claude-desktop" \
-        --prefix LD_LIBRARY_PATH : ".:./lib:${pulseaudio}/lib" \
+        --prefix LD_LIBRARY_PATH : "$out/lib-symlinks:./lib:${mesa}/lib:${libxkbcommon}/lib:${pulseaudio}/lib" \
         --inherit-argv0
     elif [ -f "$out/AppRun" ]; then
       cat > "$out/bin/claude-desktop-runner" << 'WRAPPER'
@@ -107,7 +111,7 @@ exec ./AppRun "$@"
 WRAPPER
       chmod +x "$out/bin/claude-desktop-runner"
       makeWrapper "$out/bin/claude-desktop-runner" "$out/bin/claude-desktop" \
-        --prefix LD_LIBRARY_PATH : ".:./lib:${pulseaudio}/lib" \
+        --prefix LD_LIBRARY_PATH : "$out/lib-symlinks:./lib:${mesa}/lib:${libxkbcommon}/lib:${pulseaudio}/lib" \
         --inherit-argv0
     fi
 
