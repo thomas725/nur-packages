@@ -95,16 +95,16 @@ stdenv.mkDerivation {
     fi
 
     # Create wrapper script that sets up LD_LIBRARY_PATH to inject our libraries first
-    # Also disable GPU to work around missing EGL libraries
+    # Disable GPU and auto-update due to missing EGL libraries
     if [ -f "$out/claude-desktop" ]; then
       mv "$out/claude-desktop" "$out/.claude-desktop.real"
       cat > "$out/bin/claude-desktop-runner" << 'WRAPPER'
 #!/bin/sh
 cd "$(dirname "$0")/.." || exit 1
-# Put our injected libraries first in the path so old EGL symbols are found
 export LD_LIBRARY_PATH="$PWD/lib-inject:$PWD/lib:$LD_LIBRARY_PATH"
-# Disable GPU acceleration to avoid libEGL.so.1 issues
-exec ./.claude-desktop.real --disable-gpu "$@"
+export DISABLE_GPU_SANDBOX=1
+# Pass --no-update to disable self-updating and --disable-gpu for rendering
+exec ./.claude-desktop.real --no-update --disable-gpu --enable-logging "$@"
 WRAPPER
       chmod +x "$out/bin/claude-desktop-runner"
       makeWrapper "$out/bin/claude-desktop-runner" "$out/bin/claude-desktop" \
@@ -115,7 +115,8 @@ WRAPPER
 #!/bin/sh
 cd "$(dirname "$0")/.." || exit 1
 export LD_LIBRARY_PATH="$PWD/lib-inject:$PWD/lib:$LD_LIBRARY_PATH"
-exec ./AppRun --disable-gpu "$@"
+export DISABLE_GPU_SANDBOX=1
+exec ./AppRun --no-update --disable-gpu --enable-logging "$@"
 WRAPPER
       chmod +x "$out/bin/claude-desktop-runner"
       makeWrapper "$out/bin/claude-desktop-runner" "$out/bin/claude-desktop" \
